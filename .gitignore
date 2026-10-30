@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.locqa_cache/
+*.egg-info/
+report*.json
+report*.html
+pricing.json
+# competition data must never be committed (Grand Mobile data agreement)
+data/
+handout/
+intl_*.arb
+!tests/fixtures/intl_*.arb
+*.tgz

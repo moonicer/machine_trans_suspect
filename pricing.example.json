@@ -1,0 +1,5 @@
+{
+  "_comment": "USD per 1M tokens. Fill from https://docs.claude.com pricing page before the run; cost is computed from real API usage.",
+  "claude-haiku-5-5":  {"input": null, "output": null, "cache_read": null, "cache_write": null},
+  "claude-sonnet-5-5": {"input": null, "output": null, "cache_read": null, "cache_write": null}
+}

@@ -1,0 +1,18 @@
+{
+  "@@locale": "kk",
+  "shop_buy_button": "Сатып алу",
+  "player_level_title": "Деңгей ойыншының",
+  "garage_rent_hint": "Үшін гаражды жалға алу осында басыңыз",
+  "account_blocked": "Сіздің аккаунт бұғатталды",
+  "faction_about": "Фракция ойыншылар ұйымы болып табылады",
+  "buy_car_house": "Көлік и үй сатып алу",
+  "new_mode_title": "Жаңа Ойын Режимі",
+  "save_progress": "Өзінің прогресін сақтаңыз",
+  "error_generic": "Қате орын алды",
+  "welcome_ru": "Добро пожаловать в игру, мы рады вас видеть сегодня",
+  "coins_count": "{count, plural, other{{count} монета}}",
+  "player_joined": "Ойыншы {name} ойынға кірді",
+  "you_won": "Сен жеңдің!",
+  "warn_received": "Сіз варн алдыңыз",
+  "garage_rent_button": "Жалға алу"
+}

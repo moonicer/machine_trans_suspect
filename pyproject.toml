@@ -1,0 +1,20 @@
+[project]
+name = "locqa"
+version = "0.3.0"
+description = "Localization QA for Flutter ARB files (machine_translation_suspect module)"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+llm = ["anthropic>=0.40"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+locqa = "locqa.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["locqa*"]
