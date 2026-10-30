@@ -113,9 +113,10 @@ Only reviewed findings get `reviewed_by_human: true`; the command also writes
 **Review log (Oct 31):** a native Kazakh speaker on the team explicitly ruled on 7 of the
 18 MT-suspect findings (6 edited, 1 accepted); the other 11 stay `reviewed_by_human: false`
 until confirmed. Edits were word choice (shelter vs. dungeon, «сандық» for loot boxes),
-informal 2nd person to match Russian «твой», and a rewritten idiom. Kazakh examples in
-this README and in the rule messages were written by the tool author (an LLM) and are
-pending the same native check.
+informal 2nd person to match Russian «твой», and a rewritten idiom. The Kazakh rules
+behind the detector (which forms are accepted, which are calques, postposition and
+verb-order rules) and the Kazakh examples in this README were confirmed by the same
+native speaker on Oct 31.
 
 ## Calibration on the handout (Oct 31)
 
