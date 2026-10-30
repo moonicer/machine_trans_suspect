@@ -110,9 +110,9 @@ placeholders are re-validated, broken edits abort), `rejected` drops the finding
 Only reviewed findings get `reviewed_by_human: true`; the command also writes
 `report.reviewed.patch.json` ({key: final text}) for building `intl_kk_fixed.arb`.
 
-**Review log (Oct 31):** a native Kazakh speaker on the team explicitly ruled on 7 of the
-18 MT-suspect findings (6 edited, 1 accepted); the other 11 stay `reviewed_by_human: false`
-until confirmed. Edits were word choice (shelter vs. dungeon, «сандық» for loot boxes),
+**Review log (Oct 31):** a native Kazakh speaker on the team reviewed all 18
+MT-suspect findings: 12 accepted, 6 edited, 0 rejected. Edits were word choice
+(shelter vs. dungeon; «кейс» kept as the loot-box term, distinct from «сандық» = chest),
 informal 2nd person to match Russian «твой», and a rewritten idiom. The Kazakh rules
 behind the detector (which forms are accepted, which are calques, postposition and
 verb-order rules) and the Kazakh examples in this README were confirmed by the same

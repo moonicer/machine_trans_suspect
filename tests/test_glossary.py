@@ -142,3 +142,16 @@ def test_review_conflicting_fixes_need_qualified_keys(tmp_path):
     main(["review", "--report", str(tmp_path / "r.json"), "--decisions", str(tmp_path / "d.json"),
           "--out", str(tmp_path / "o.json")])
     assert json.loads((tmp_path / "o.patch.json").read_text("utf-8")) == {"k": "Кейс"}
+
+
+def test_combine_builds_single_patch_and_detects_conflicts(tmp_path):
+    a = [{"key": "k", "issue_type": "glossary_violation", "suggestion": "Скиндер", "reviewed_by_human": True},
+         {"key": "u", "issue_type": "glossary_violation", "suggestion": "X", "reviewed_by_human": False}]
+    b = [{"key": "k", "issue_type": "orthography", "suggestion": "Скиндер", "reviewed_by_human": True}]
+    c = [{"key": "k", "issue_type": "orthography", "suggestion": "СКИНДЕР", "reviewed_by_human": True}]
+    for n, d in (("a", a), ("b", b), ("c", c)):
+        (tmp_path / f"{n}.json").write_text(json.dumps(d, ensure_ascii=False), "utf-8")
+    main(["combine", "--reports", str(tmp_path / "a.json"), str(tmp_path / "b.json"), "--out", str(tmp_path / "o.json")])
+    assert json.loads((tmp_path / "o.patch.json").read_text("utf-8")) == {"k": "Скиндер"}   # unreviewed "u" excluded
+    with pytest.raises(SystemExit):
+        main(["combine", "--reports", str(tmp_path / "a.json"), str(tmp_path / "c.json"), "--out", str(tmp_path / "o.json")])

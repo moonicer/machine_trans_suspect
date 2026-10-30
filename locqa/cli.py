@@ -6,6 +6,7 @@
                [--html report.html] [--merge]
   locqa eval   --report report.json --labels labels.csv   # precision/recall vs answer key
   locqa review --report report.json --decisions decisions.json --out report.reviewed.json
+  locqa combine --reports mt.json glossary.json manual.json --out report.json   # + report.patch.json
 """
 from __future__ import annotations
 
@@ -179,6 +180,30 @@ def cmd_review(a) -> int:
     return 0
 
 
+def cmd_combine(a) -> int:
+    """Concatenate reports from several checks and build ONE patch:
+    {key: final_text} from reviewed findings. Fails if two reviewed findings
+    for the same key propose different text (the fix must be a single string
+    that resolves every issue of that key)."""
+    allf, patch, by_type = [], {}, {}
+    for r in a.reports:
+        data = json.loads(Path(r).read_text("utf-8"))
+        allf += data if isinstance(data, list) else data.get("findings", [])
+    for f in allf:
+        by_type[f["issue_type"]] = by_type.get(f["issue_type"], 0) + 1
+        if f.get("reviewed_by_human") and f.get("suggestion"):
+            if f["key"] in patch and patch[f["key"]] != f["suggestion"]:
+                raise SystemExit(f"{f['key']}: reviewed fixes disagree between issue types")
+            patch[f["key"]] = f["suggestion"]
+    o = Path(a.out)
+    o.write_text(json.dumps(allf, ensure_ascii=False, indent=2), "utf-8")
+    o.with_suffix(".patch.json").write_text(json.dumps(patch, ensure_ascii=False, indent=2), "utf-8")
+    print(json.dumps({"findings": len(allf), "by_type": by_type,
+                      "reviewed": sum(1 for f in allf if f.get("reviewed_by_human")),
+                      "patched_keys": len(patch)}, ensure_ascii=False), file=sys.stderr)
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="locqa")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -212,6 +237,10 @@ def main(argv=None) -> int:
     r.add_argument("--decisions", required=True)
     r.add_argument("--out", required=True)
     r.set_defaults(fn=cmd_review)
+    cb = sub.add_parser("combine")
+    cb.add_argument("--reports", nargs="+", required=True)
+    cb.add_argument("--out", required=True)
+    cb.set_defaults(fn=cmd_combine)
     a = ap.parse_args(argv)
     return a.fn(a)
 

@@ -71,4 +71,19 @@ suggestion is left empty rather than guessed. Case (UPPER / Title) is preserved.
 
 1,156 keys contain at least one glossary term → 30 findings: 26 forbidden
 renderings (25 with an automatic fix) and 4 strict terms missing from short labels.
-All are `reviewed_by_human: false` until the native review (`locqa review`).
+**Native review (Oct 31):** all 30 reviewed — 19 accepted, 9 edited, 2 rejected
+(a term present only as a typo, which is an orthography issue; a sentence fragment whose
+term sits in the other half). One accepted finding needs a code change: the client appends
+the price after «Открыть кейс за», which Kazakh word order cannot follow.
+
+While checking, the reviewer found 9 more problems in the same strings (garbled words,
+wrong word for «скидки», wrong person/mood, capitalisation). They are logged under their
+own issue types (`machine_translation_suspect`, `orthography`), because recall is scored
+per type, and the final text of each key fixes all of its issues at once:
+
+```bash
+locqa combine --reports mt.reviewed.json glossary.reviewed.json manual.json --out report.json
+# report.patch.json = one final string per key; fails if two reviewed fixes disagree
+```
+
+Combined result: 55 findings, all reviewed, 45 keys patched.
