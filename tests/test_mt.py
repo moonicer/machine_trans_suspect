@@ -262,3 +262,33 @@ def test_anthropic_judge_batches_caches_and_counts(tmp_path, monkeypatch):
     f2, _ = mt.run(ru, kk, j, mt.MTConfig(llm_mode="scan", screen_model="m", verify_model="m"), en)
     assert len(calls) == n_calls and usage.cache_hits > 0          # second run fully cached
     assert [x.key for x in f1] == [x.key for x in f2]
+
+
+def test_review_applies_decisions(tmp_path):
+    rep = [
+        {"key": "a", "issue_type": "machine_translation_suspect", "target": "Іс {n}", "suggestion": "Кейс {n}", "reviewed_by_human": False},
+        {"key": "b", "issue_type": "machine_translation_suspect", "target": "x", "suggestion": "y", "reviewed_by_human": False},
+        {"key": "c", "issue_type": "machine_translation_suspect", "target": "p", "suggestion": "q", "reviewed_by_human": False},
+        {"key": "d", "issue_type": "machine_translation_suspect", "target": "r", "suggestion": "s", "reviewed_by_human": False},
+        {"key": "z", "issue_type": "untranslated", "target": "", "suggestion": None, "reviewed_by_human": False},
+    ]
+    dec = {"a": {"status": "edited", "text": "Сандық {n}", "reviewer": "native"},
+           "b": {"status": "accepted"}, "c": {"status": "rejected"}}
+    (tmp_path / "r.json").write_text(json.dumps(rep, ensure_ascii=False), "utf-8")
+    (tmp_path / "d.json").write_text(json.dumps(dec, ensure_ascii=False), "utf-8")
+    main(["review", "--report", str(tmp_path / "r.json"), "--decisions", str(tmp_path / "d.json"),
+          "--out", str(tmp_path / "o.json")])
+    out = {f["key"]: f for f in json.loads((tmp_path / "o.json").read_text("utf-8"))}
+    assert out["a"]["suggestion"] == "Сандық {n}" and out["a"]["reviewed_by_human"]
+    assert out["b"]["reviewed_by_human"] and "c" not in out
+    assert out["d"]["reviewed_by_human"] is False and "z" in out
+    assert json.loads((tmp_path / "o.patch.json").read_text("utf-8")) == {"a": "Сандық {n}", "b": "y"}
+
+
+def test_review_rejects_broken_placeholder(tmp_path):
+    rep = [{"key": "a", "issue_type": "machine_translation_suspect", "target": "Іс {n}", "suggestion": "Кейс {n}"}]
+    (tmp_path / "r.json").write_text(json.dumps(rep), "utf-8")
+    (tmp_path / "d.json").write_text(json.dumps({"a": {"status": "edited", "text": "Сандық"}}), "utf-8")
+    with pytest.raises(SystemExit):
+        main(["review", "--report", str(tmp_path / "r.json"), "--decisions", str(tmp_path / "d.json"),
+              "--out", str(tmp_path / "o.json")])

@@ -97,10 +97,23 @@ low = stylistic.
 ## Human review
 
 Every finding is emitted with `reviewed_by_human: false`; suggestions are never
-applied automatically. The native speaker reviews the HTML report (evidence +
-signals per row) and accepts / edits / rejects; only accepted or edited strings
-go into `intl_kk_fixed.arb` with `reviewed_by_human: true`. Record the number of
-reviewed strings in the main README methodology.
+applied automatically. A native Kazakh speaker reads the HTML report and records a
+decision per key:
+
+```bash
+locqa review --report report.json --decisions decisions.json --out report.reviewed.json
+# decisions.json: {key: {"status": "accepted"|"edited"|"rejected", "text": "...", "note": "...", "reviewer": "..."}}
+```
+
+`accepted` keeps the suggestion, `edited` replaces it with the reviewer's text (ICU and
+placeholders are re-validated, broken edits abort), `rejected` drops the finding.
+Only reviewed findings get `reviewed_by_human: true`; the command also writes
+`report.reviewed.patch.json` ({key: final text}) for building `intl_kk_fixed.arb`.
+
+**Review log (Oct 31):** all 18 MT-suspect findings on the handout were reviewed by a
+native Kazakh speaker on the team: 12 accepted, 6 edited, 0 rejected. Edits were word
+choice (shelter vs. dungeon, «сандық» for loot boxes), informal 2nd person to match
+Russian «твой», and a rewritten idiom.
 
 ## Calibration on the handout (Oct 31)
 

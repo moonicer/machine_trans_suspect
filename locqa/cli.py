@@ -4,6 +4,7 @@
                [--ref-en intl_en.arb] [--llm anthropic|none] [--llm-mode verify|scan]
                [--html report.html] [--merge]
   locqa eval   --report report.json --labels labels.csv   # precision/recall vs answer key
+  locqa review --report report.json --decisions decisions.json --out report.reviewed.json
 """
 from __future__ import annotations
 
@@ -99,6 +100,50 @@ def cmd_eval(a) -> int:
     return 0
 
 
+def cmd_review(a) -> int:
+    """Apply native-speaker decisions to a report.
+
+    decisions.json: {key: {"status": "accepted" | "edited" | "rejected",
+                           "text": "<final kk, for edited>", "note": "...", "reviewer": "..."}}
+    accepted -> suggestion kept, reviewed_by_human=true
+    edited   -> suggestion replaced by the reviewer's text (ICU/placeholders re-validated)
+    rejected -> finding removed (reviewer says it is not an error)
+    Findings without a decision stay reviewed_by_human=false.
+    Also writes <out>.patch.json {key: final_text} for building intl_kk_fixed.arb.
+    """
+    from . import icu
+    rep = json.loads(Path(a.report).read_text("utf-8"))
+    dec = json.loads(Path(a.decisions).read_text("utf-8"))
+    out, patch, counts = [], {}, {"accepted": 0, "edited": 0, "rejected": 0, "pending": 0}
+    for f in rep:
+        d = dec.get(f["key"]) if f.get("issue_type") == mt.ISSUE else None
+        if not d:
+            counts["pending"] += f.get("issue_type") == mt.ISSUE
+            out.append(f); continue
+        st = d.get("status")
+        if st == "rejected":
+            counts["rejected"] += 1; continue
+        if st == "edited":
+            text = d["text"]
+            if not icu.is_valid(text) or not icu.same_structure(f["target"], text):
+                raise SystemExit(f"{f['key']}: reviewer text breaks ICU/placeholders")
+            f["suggestion"] = text
+        elif st != "accepted":
+            raise SystemExit(f"{f['key']}: unknown status {st!r}")
+        f["reviewed_by_human"] = True
+        if d.get("note") or d.get("reviewer"):
+            f.setdefault("details", {})["review"] = {k: d[k] for k in ("note", "reviewer") if d.get(k)}
+        counts[st] += 1
+        if f.get("suggestion"):
+            patch[f["key"]] = f["suggestion"]
+        out.append(f)
+    o = Path(a.out)
+    o.write_text(json.dumps(out, ensure_ascii=False, indent=2), "utf-8")
+    o.with_suffix(".patch.json").write_text(json.dumps(patch, ensure_ascii=False, indent=2), "utf-8")
+    print(json.dumps(counts), file=sys.stderr)
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="locqa")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -126,6 +171,11 @@ def main(argv=None) -> int:
     e.add_argument("--report", required=True)
     e.add_argument("--labels", required=True)
     e.set_defaults(fn=cmd_eval)
+    r = sub.add_parser("review")
+    r.add_argument("--report", required=True)
+    r.add_argument("--decisions", required=True)
+    r.add_argument("--out", required=True)
+    r.set_defaults(fn=cmd_review)
     a = ap.parse_args(argv)
     return a.fn(a)
 
