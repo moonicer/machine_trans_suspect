@@ -74,7 +74,7 @@ renderings (25 with an automatic fix) and 4 strict terms missing from short labe
 **Native review (Oct 31):** all 30 reviewed — 19 accepted, 9 edited, 2 rejected
 (a term present only as a typo, which is an orthography issue; a sentence fragment whose
 term sits in the other half). One accepted finding needs a code change: the client appends
-the price after «Открыть кейс за», which Kazakh word order cannot follow.
+the price after a Russian string ending in «за», which Kazakh word order cannot follow.
 
 While checking, the reviewer found 9 more problems in the same strings (garbled words,
 wrong word for «скидки», wrong person/mood, capitalisation). They are logged under their
