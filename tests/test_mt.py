@@ -44,7 +44,7 @@ def test_genitive_final():
 
 
 def test_possessive_agreement():
-    assert "possessive_agreement" in names("Ваш аккаунт заблокирован", "Сіздің аккаунт бұғатталды")
+    assert "possessive_agreement" in names("Ваш профиль заморожен", "Сіздің профиль бұғатталды")
 
 
 def test_reflexive_person():
@@ -74,15 +74,35 @@ def test_title_case_with_en_ref():
     ("Ты победил!", "Сен жеңдің!"),                    # 2nd-person past verb, not genitive
     ("Вы получили варн", "Сіз варн алдыңыз"),            # player slang
     ("Игрок {name} вошёл в игру", "Ойыншы {name} ойынға кірді"),
-    ("Ваш аккаунт заблокирован", "Сіздің аккаунтыңыз бұғатталды"),
+    ("Ваш профиль заморожен", "Сіздің профиліңіз бұғатталды"),
     ("Уровень игрока", "Ойыншы деңгейі"),
     ("Он получил 10 монет", "Ол он монета алды"),        # «он» = ten in Kazakh
     ("Гараж арендован", "Гараж жалға алынды"),
     ("Сохраните свой прогресс", "Прогресіңізді сақтаңыз"),
     ("Бесплатно", "Ақысыз алыңыз"),                    # -сыз 'without' is not 2nd person
+    # regressions found on the real file (paraphrased, no competition data):
+    ("Продать за {amount}", "{amount} үшін сату"),         # placeholder precedes postposition
+    ("Приз за миссии", "АПТАЛЫҚ МИССИЯЛАР\nҮШІН ЖҮЛДЕ"),  # newline = visual wrap
+    ("Узнавайте о новостях", "Жаңалықтар\nтуралы біліп отырыңыз"),
+    ("Пополняется через «+»", "Отын («+» арқылы толтырылады)"),
+    ("Это твой документ", "Бұл сенің басты құжатың"),        # 2nd-person possessive -ың
+    ("Посетите наш форум", "Біздің форумға кіріңіз"),         # colloquially accepted
+    ("Скины: Петровский", "Скиндер: Петровский және Ноклип"),  # proper name, not Russian grammar
 ])
 def test_clean_strings_have_no_strong_signal(src, tgt):
     assert all(s.weight < 0.4 for s in rule_signals(src, tgt)), rule_signals(src, tgt)
+
+
+def test_verb_before_latin_object():
+    assert "verb_before_object" in names("Купить VIP PASS", "Сатып алу VIP PASS")
+    assert "verb_before_object" not in names("VIP PASS купить", "VIP PASS сатып алу")
+    assert "verb_before_object" not in names("Цена аренды", "Жалға алу бағасы")
+
+
+def test_fragment_source_skips_word_order_rule():
+    # «Открыть за» + price appended by code: concatenation issue, not MT
+    assert "postposition_clause_initial" not in names("Открыть за", "үшін ашу")
+    assert "postposition_clause_initial" in names("Открыть за деньги", "үшін ақшаға ашу")
 
 
 def test_eligibility_routes_other_issue_types():
@@ -139,7 +159,9 @@ def test_rules_only_is_high_precision():
     f, _ = mt.run(ru, kk, None, mt.MTConfig(llm_mode="none"), en)
     keys = {x.key for x in f}
     assert keys <= EXPECTED_MT and not keys & CLEAN
-    assert {"garage_rent_hint", "account_blocked", "buy_car_house", "player_level_title"} <= keys
+    assert {"garage_rent_hint", "account_blocked", "buy_car_house"} <= keys
+    # ambiguous genitive alone is an LLM candidate, not an offline finding
+    assert "player_level_title" not in keys
 
 
 def test_llm_fusion_recall_and_veto():

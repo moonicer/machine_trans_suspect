@@ -13,7 +13,8 @@ from .icu import PH
 
 KK_LETTERS = set("әғқңөұүһіӘҒҚҢӨҰҮҺІ")
 WORD_RE = re.compile(r"⟨X⟩|[A-Za-zА-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]+(?:[-'][A-Za-zА-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]+)*")
-CLAUSE_BREAK = re.compile(r"[.!?…:;,—–()\[\]«»\"\n]")
+# "\n" is NOT a boundary: in UI strings it is a visual line break inside one phrase.
+CLAUSE_BREAK = re.compile(r"[.!?…:;,—–]")
 
 # Russian function words that do not exist as standalone Kazakh words.
 RU_FUNCTION_WORDS = {
@@ -89,7 +90,18 @@ def language_profile(text: str) -> dict:
 
 
 def clauses(text: str) -> list[str]:
+    text = re.sub(r"\s+", " ", text)
     return [c.strip() for c in CLAUSE_BREAK.split(text) if c.strip()]
+
+
+def clause_initial_word(clause: str) -> str | None:
+    """First token of a clause, only if nothing (word, placeholder, quote,
+    symbol or markup) precedes it."""
+    m = WORD_RE.search(clause)
+    if not m or m.group(0) == PH:
+        return None
+    prefix = re.sub(r"<[^>]*>", "", clause[:m.start()]).strip()
+    return m.group(0) if not prefix else None
 
 
 def is_title_case(text: str) -> bool:

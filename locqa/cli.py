@@ -37,7 +37,8 @@ def cmd_check(a) -> int:
     elif a.llm == "replay":
         judge = StaticJudge(json.loads(Path(a.replay).read_text("utf-8")))
     cfg = mt.MTConfig(llm_mode=a.llm_mode if judge else "none", screen_model=a.screen_model,
-                      verify_model=a.verify_model, report_threshold=a.threshold)
+                      verify_model=a.verify_model, report_threshold=a.threshold,
+                      min_scan_words=a.min_scan_words)
     findings, stats = mt.run(src, tgt, judge, cfg, ref, gloss)
 
     out = Path(a.out)
@@ -117,6 +118,7 @@ def main(argv=None) -> int:
     c.add_argument("--cache-dir", default=".locqa_cache")
     c.add_argument("--batch-size", type=int, default=15)
     c.add_argument("--threshold", type=float, default=0.5)
+    c.add_argument("--min-scan-words", type=int, default=3)
     c.add_argument("--merge", action="store_true", help="merge into an existing report.json")
     c.add_argument("--no-details", action="store_true", help="emit only the schema fields")
     c.set_defaults(fn=cmd_check)

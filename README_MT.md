@@ -57,13 +57,14 @@ per issue type).
 
 | signal | weight | example (bad → good) |
 |---|---|---|
+| verb_before_object | 0.60 | «Сатып алу VIP PASS» → «VIP PASS сатып алу» (only Latin-script objects) |
 | postposition_clause_initial | 0.70 | «Үшін гаражды…» → «Гаражды жалға алу үшін…» |
-| possessive_agreement | 0.60 | «Сіздің аккаунт» → «Сіздің аккаунтыңыз» |
+| possessive_agreement | 0.60 (сіздің) / 0.30 (біздің) | «Сіздің аккаунт» → «Сіздің аккаунтыңыз»; «біздің сайтта» is accepted colloquially |
 | russian_function_word | 0.60 | «Көлік и үй» → «Көлік пен үй» |
-| genitive_phrase_final (-ның/-нің) | 0.60 | «Деңгей ойыншының» → «Ойыншы деңгейі» |
+| genitive_phrase_final (-ның/-нің) | 0.45 | «Деңгей ойыншының» → «Ойыншы деңгейі» (LLM candidate only) |
 | reflexive_person_mismatch | 0.60 | «Өзінің прогресін сақтаңыз» → «Прогресіңізді сақтаңыз» |
 | russian_inflection | 0.55 | «Технический үзіліс» → «Техникалық үзіліс» |
-| genitive_phrase_final (-дың/-тің…) | 0.40 | weaker: same ending as informal past verbs (жеңдің) |
+| genitive_phrase_final (-дың/-тің…) | 0.30 | same endings as informal past verbs (жеңдің) and 2nd-person possessives (құжатың) |
 | calque_lexicon | 0.25–0.40 | «болып табылады», «жүзеге асыру», «тарапынан» |
 | title_case | 0.35 | «Жаңа Ойын Режимі» (stronger evidence if EN is Title Case) |
 | word_by_word_ratio | 0.20 | Kazakh has ≥ as many words as a preposition-heavy Russian source |
@@ -101,7 +102,30 @@ signals per row) and accepts / edits / rejects; only accepted or edited strings
 go into `intl_kk_fixed.arb` with `reviewed_by_human: true`. Record the number of
 reviewed strings in the main README methodology.
 
-## Calibration on the real data (to do once the handout is unpacked)
+## Calibration on the handout (Oct 31)
+
+First run on the real `intl_kk.arb` (5,479 source keys, 3,568 eligible for this check):
+
+| step | offline findings | what was wrong |
+|---|---|---|
+| v1 rules | 30 | ~24 false positives |
+| treat `\n` as a visual line break, not a clause end | — | genitive / postposition fired across UI line wraps |
+| placeholder or quote before a postposition counts as its noun | — | «{price} үшін» flagged |
+| skip fragments whose Russian ends in a preposition («Открыть за» + price) | — | concatenation, not MT |
+| genitive endings shared with 2nd-person forms → LLM-only weight | — | «құжатың», «келдің» |
+| «біздің X» without -мыз → weak | — | accepted colloquial usage |
+| mid-sentence capitalised Russian-looking words = names (skins, NPCs) | — | «-ский» skin names |
+| v2 rules | 6 | 0 false positives on manual inspection |
+
+With a Claude judge over the rule candidates plus a scan of the most word-for-word strings
+(`--llm replay` of the recorded verdicts), the run reports 15 findings, all with a
+guarded suggestion. New rule from that review: `verb_before_object`.
+Real strings are not reproduced here (data agreement); regression tests use paraphrases.
+
+Data quirk for the whole team: `intl_kk.arb` repeats 109 string keys (10 with
+different values). Dart's JSON decoding keeps the last value, so the last one is what ships.
+
+## Calibration loop (repeat with native labels)
 
 1. Run `--llm-mode scan` on `intl_kk.arb`; give the native speaker a random sample
    of 50 findings + 50 non-findings; label.
