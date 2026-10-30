@@ -1,0 +1,10 @@
+ru,kk,en,notes,kk_allowed,kk_forbidden,en_sense,strict
+скин,скин,skin,not «тері»,,тері,,yes
+инвентарь,инвентарь,inventory,not «түгендеу»,,түгендеу,,yes
+игрок,ойыншы,player,,,ойнаушы,,no
+кейс,кейс,case,lootbox,,=іс;сандық,,yes
+сундук,сандық,chest,,,кейс,,no
+ивент,ивент,event,,іс-шара,оқиға;іс-қима,,no
+семья,отбасы,family,,,жанұя,,yes
+бан,бан,ban,,бұғатта,,,no
+пропуск,пасс,pass,,pass,өткізу,\bpass\b,no
