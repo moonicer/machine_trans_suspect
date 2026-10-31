@@ -327,7 +327,7 @@ class OpenAIJudge(AnthropicJudge):
         try:
             return self.client.chat.completions.create(**kw)
         except Exception as e:  # noqa: BLE001
-            if "temperature" in str(e) and not self._no_temperature:
+            if "temperature" in str(e) and "temperature" in kw:
                 self._no_temperature = True   # reasoning models only accept the default
                 kw.pop("temperature", None)
                 return self.client.chat.completions.create(**kw)
