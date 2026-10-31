@@ -277,8 +277,11 @@ class AnthropicJudge(BaseJudge):
                     continue
             return batch, by_id, None
 
+        errors: list[str] = []
         with ThreadPoolExecutor(max_workers=self.workers) as ex:
             for batch, by_id, err in ex.map(run, batches):
+                if err:
+                    errors.append(err)
                 for it in batch:
                     raw = by_id.get(it.id)
                     if raw is None:
@@ -287,6 +290,13 @@ class AnthropicJudge(BaseJudge):
                     v = apply_guards(it, raw, model)
                     if v is not None:
                         out[it.id] = v
+        if errors:
+            import sys
+            print(f"[locqa] LLM: {len(errors)}/{len(batches)} batches failed with model '{model}'. "
+                  f"First error: {errors[0][:500]}", file=sys.stderr)
+            if len(errors) == len(batches):
+                raise SystemExit("every LLM batch failed, so no model verdicts were produced "
+                                 "(check the key, the model name, quota and OPENAI_BASE_URL)")
         return out
 
 

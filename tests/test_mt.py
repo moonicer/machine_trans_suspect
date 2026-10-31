@@ -292,3 +292,19 @@ def test_review_rejects_broken_placeholder(tmp_path):
     with pytest.raises(SystemExit):
         main(["review", "--report", str(tmp_path / "r.json"), "--decisions", str(tmp_path / "d.json"),
               "--out", str(tmp_path / "o.json")])
+
+
+def test_all_batches_failing_is_loud(tmp_path):
+    import pytest
+    from locqa.checks.mt_llm import AnthropicJudge, JudgeItem
+
+    class Boom(AnthropicJudge):
+        def __init__(self):
+            from locqa.checks.mt_llm import Usage
+            self.cache_dir = tmp_path; self.batch_size = 5; self.workers = 1
+            self.max_tokens = 10; self.usage = Usage()
+        def _call(self, model, batch):
+            raise RuntimeError("401 invalid api key")
+
+    with pytest.raises(SystemExit):
+        Boom().judge([JudgeItem(id=0, key="k", source="a", target="b")], "m")
