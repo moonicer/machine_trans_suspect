@@ -188,3 +188,14 @@ One cheap-model pass over the rule candidates (34 strings sent for checking, 17 
 - `--max-tokens` raises the output cap per call (reasoning models can spend most of it before answering).
 
 Combined with the earlier reviews: 57 findings, all reviewed, 47 patched keys (`locqa combine`).
+
+## Full LLM scan (`--llm-mode scan`) and review
+
+Scan over all eligible strings (3,568; 241 batches, ~593k input / ~457k output tokens) flagged 575 strings.
+It re-found 20 of the 23 strings already fixed by the native reviewer (8 with an identical fix). 28 flagged keys were
+already patched, none of the proposed fixes broke the glossary, ICU or placeholders.
+
+Triage: findings were ranked by severity and confidence and identical source/target pairs were grouped, giving
+113 review items (115 keys). The native reviewer accepted all proposed fixes, editing 2 of them. The other ~430 scan
+findings (mostly medium/low severity) were **not reviewed**; they are not part of the patch and must not be treated as
+verified. Combined with the earlier reviews: 172 reviewed findings, 162 patched keys.
