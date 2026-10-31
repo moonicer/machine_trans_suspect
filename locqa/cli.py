@@ -7,6 +7,8 @@
   locqa eval   --report report.json --labels labels.csv   # precision/recall vs answer key
   locqa review --report report.json --decisions decisions.json --out report.reviewed.json
   locqa combine --reports mt.json glossary.json manual.json --out report.json   # + report.patch.json
+  locqa apply  --source intl_ru.arb --target intl_kk.arb --report report.json --out intl_kk_fixed.arb
+               [--include-unreviewed]    # reviewed fixes only by default; writes <out>.review.json too
 """
 from __future__ import annotations
 
@@ -94,31 +96,48 @@ def cmd_check(a) -> int:
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), "utf-8")
     out.with_suffix(".meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), "utf-8")
     if a.html:
-        write_html(Path(a.html), findings, meta)
+        write_html(Path(a.html), payload, meta)
     print(f"-> {out}", file=sys.stderr)
     return 0
 
 
 def write_html(path: Path, findings, meta) -> None:
+    """Human-readable report. ``findings`` may be Finding objects or report.json dicts."""
     e = html.escape
     rows = []
     for f in findings:
+        f = f.to_dict() if hasattr(f, "to_dict") else f
+        det = f.get("details") or {}
         sigs = "".join(f"<li><b>{e(s['name'])}</b> ({s['weight']}): {e(s['reason'])}</li>"
-                       for s in f.details.get("signals", []))
+                       for s in det.get("signals", []))
         sigs += "".join(f"<li><b>{e(t['kind'])}</b> {e(t['term'])} → {e(t['approved'])}</li>"
-                        for t in f.details.get("terms", []))
-        rows.append(f"""<tr class="{f.severity}"><td><code>{e(f.key)}</code><br><small>{e(f.issue_type)}</small></td>
-<td><span class="sev">{f.severity}</span><br>{f.confidence:.2f}</td>
-<td>{e(f.source)}</td><td>{e(f.target)}</td><td>{e(f.suggestion or '—')}</td>
-<td>{e(f.evidence)}<details><summary>signals</summary><ul>{sigs}</ul></details></td></tr>""")
+                        for t in det.get("terms", []))
+        who = (det.get("review") or {}).get("reviewer", "")
+        note = (det.get("review") or {}).get("note", "")
+        status = (f"✔ reviewed<br><small>{e(who)}</small>" if f.get("reviewed_by_human") else "pending")
+        if note:
+            status += f"<br><small>{e(note)}</small>"
+        rows.append(f"""<tr class="{f['severity']}"><td><code>{e(f['key'])}</code><br><small>{e(f['issue_type'])}</small></td>
+<td><span class="sev">{f['severity']}</span><br>{f['confidence']:.2f}</td>
+<td>{status}</td>
+<td>{e(f['source'])}</td><td>{e(f['target'])}</td><td>{e(f.get('suggestion') or '—')}</td>
+<td>{e(f['evidence'])}<details><summary>signals</summary><ul>{sigs}</ul></details></td></tr>""")
+    n_rev = sum(1 for f in findings if (f.to_dict() if hasattr(f, "to_dict") else f).get("reviewed_by_human"))
     path.write_text(f"""<!doctype html><meta charset="utf-8"><title>LocQA report</title>
 <style>body{{font:14px system-ui;margin:16px}}table{{border-collapse:collapse;width:100%}}
 td,th{{border-bottom:1px solid #ddd;padding:6px;vertical-align:top;text-align:left}}
 tr.high .sev{{color:#b00020}}tr.medium .sev{{color:#a15c00}}tr.low .sev{{color:#555}}</style>
-<h1>LocQA — {len(findings)} findings</h1>
+<h1>LocQA — {len(findings)} findings, {n_rev} reviewed by a human</h1>
 <pre>{e(json.dumps(meta.get('stats', {}), ensure_ascii=False))}</pre>
-<table><tr><th>key</th><th>severity / conf</th><th>ru</th><th>kk</th><th>suggestion</th><th>evidence</th></tr>
+<table><tr><th>key</th><th>severity / conf</th><th>human review</th><th>ru</th><th>kk</th><th>suggestion</th><th>evidence</th></tr>
 {''.join(rows)}</table>""", "utf-8")
+
+
+def cmd_html(a) -> int:
+    data = json.loads(Path(a.report).read_text("utf-8"))
+    write_html(Path(a.out), data if isinstance(data, list) else data.get("findings", []), {})
+    print(f"-> {a.out}", file=sys.stderr)
+    return 0
 
 
 def cmd_eval(a) -> int:
@@ -209,6 +228,18 @@ def cmd_combine(a) -> int:
     return 0
 
 
+def cmd_apply(a) -> int:
+    from . import apply as ap_
+    st = ap_.build(a.target, a.source, a.report, a.out, a.include_unreviewed)
+    print(json.dumps({k: v for k, v in st.items() if k != "findings_without_fix"}, ensure_ascii=False),
+          file=sys.stderr)
+    if st["findings_without_fix"]:
+        print(f"{len(st['findings_without_fix'])} finding(s) have no text fix (e.g. need a code change): "
+              + ", ".join(st["findings_without_fix"][:8]), file=sys.stderr)
+    print(f"-> {a.out}", file=sys.stderr)
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="locqa")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -247,6 +278,18 @@ def main(argv=None) -> int:
     cb.add_argument("--reports", nargs="+", required=True)
     cb.add_argument("--out", required=True)
     cb.set_defaults(fn=cmd_combine)
+    h = sub.add_parser("html", help="render any report.json (incl. reviewed/combined) as report.html")
+    h.add_argument("--report", required=True)
+    h.add_argument("--out", required=True)
+    h.set_defaults(fn=cmd_html)
+    ap2 = sub.add_parser("apply", help="build intl_kk_fixed.arb from a reviewed report")
+    ap2.add_argument("--source", required=True, help="source ARB (used to validate placeholders/ICU)")
+    ap2.add_argument("--target", required=True)
+    ap2.add_argument("--report", required=True)
+    ap2.add_argument("--out", required=True)
+    ap2.add_argument("--include-unreviewed", action="store_true",
+                     help="also apply unreviewed suggestions, flagged x-locqa-reviewed=false")
+    ap2.set_defaults(fn=cmd_apply)
     a = ap.parse_args(argv)
     return a.fn(a)
 

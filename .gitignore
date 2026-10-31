@@ -12,3 +12,4 @@ handout/
 intl_*.arb
 !tests/fixtures/intl_*.arb
 *.tgz
+*.review.json

@@ -8,7 +8,7 @@ calques, Russian grammar, non-Kazakh word order, officialese, English-MT style.
 
 ```bash
 pip install -e ".[llm,dev]"          # anthropic/openai are optional; core has no deps
-pytest -q                             # 35 tests, no network
+pytest -q                             # 80 tests, no network
 
 # offline, rules only (high precision, lower recall)
 locqa check --source intl_ru.arb --target intl_kk.arb --glossary glossary.csv \
@@ -108,7 +108,7 @@ locqa review --report report.json --decisions decisions.json --out report.review
 `accepted` keeps the suggestion, `edited` replaces it with the reviewer's text (ICU and
 placeholders are re-validated, broken edits abort), `rejected` drops the finding.
 Only reviewed findings get `reviewed_by_human: true`; the command also writes
-`report.reviewed.patch.json` ({key: final text}) for building `intl_kk_fixed.arb`.
+`report.reviewed.patch.json` ({key: final text}) for `locqa apply` (see README.md), which builds `intl_kk_fixed.arb` with a review flag on every changed string.
 
 **Review log (Oct 31):** a native Kazakh speaker on the team reviewed all 18
 MT-suspect findings: 12 accepted, 6 edited, 0 rejected. Edits were word choice
@@ -188,17 +188,6 @@ One cheap-model pass over the rule candidates (34 strings sent for checking, 17 
 - `--max-tokens` raises the output cap per call (reasoning models can spend most of it before answering).
 
 Combined with the earlier reviews: 57 findings, all reviewed, 47 patched keys (`locqa combine`).
-
-## Full LLM scan (`--llm-mode scan`) and review
-
-Scan over all eligible strings (3,568; 241 batches, ~593k input / ~457k output tokens) flagged 575 strings.
-It re-found 20 of the 23 strings already fixed by the native reviewer (8 with an identical fix). 28 flagged keys were
-already patched, none of the proposed fixes broke the glossary, ICU or placeholders.
-
-Triage: findings were ranked by severity and confidence and identical source/target pairs were grouped, giving
-113 review items (115 keys). The native reviewer accepted all proposed fixes, editing 2 of them. The other ~430 scan
-findings (mostly medium/low severity) were **not reviewed**; they are not part of the patch and must not be treated as
-verified. Combined with the earlier reviews: 172 reviewed findings, 162 patched keys.
 
 ## Full LLM scan (`--llm-mode scan`) and native review
 
