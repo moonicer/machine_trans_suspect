@@ -288,3 +288,54 @@ class AnthropicJudge(BaseJudge):
                     if v is not None:
                         out[it.id] = v
         return out
+
+
+class OpenAIJudge(AnthropicJudge):
+    """Same rubric, batching, guards and disk cache, but through any OpenAI-compatible
+    chat-completions endpoint (OpenAI, or a gateway: set OPENAI_BASE_URL)."""
+    name = "openai"
+
+    def __init__(self, cache_dir: str | Path = ".locqa_cache", batch_size: int = 15,
+                 workers: int = 4, usage: Usage | None = None, max_tokens: int = 4096):
+        try:
+            import openai
+        except ImportError as e:  # pragma: no cover
+            raise SystemExit("pip install openai  (or run with --llm none)") from e
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise SystemExit("OPENAI_API_KEY is not set (or run with --llm none)")
+        self.client = openai.OpenAI()  # honours OPENAI_API_KEY and OPENAI_BASE_URL
+        self.cache_dir = Path(cache_dir); self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.batch_size, self.workers, self.max_tokens = batch_size, workers, max_tokens
+        self.usage = usage or Usage()
+        self._no_temperature = False
+
+    def _complete(self, model, messages):
+        kw = dict(model=model, messages=messages, max_completion_tokens=self.max_tokens)
+        if not self._no_temperature:
+            kw["temperature"] = 0
+        try:
+            return self.client.chat.completions.create(**kw)
+        except Exception as e:  # noqa: BLE001
+            if "temperature" in str(e) and not self._no_temperature:
+                self._no_temperature = True   # reasoning models only accept the default
+                kw.pop("temperature", None)
+                return self.client.chat.completions.create(**kw)
+            raise
+
+    def _call(self, model, batch):
+        user = ("Review these items. JSON in, JSON array out.\n"
+                + json.dumps([b.payload() for b in batch], ensure_ascii=False, indent=1))
+        msgs = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]
+        last_err = None
+        for _attempt in range(2):
+            resp = self._complete(model, msgs)
+            u = resp.usage
+            self.usage.add(model, type("U", (), {
+                "input_tokens": getattr(u, "prompt_tokens", 0),
+                "output_tokens": getattr(u, "completion_tokens", 0)})())
+            text = resp.choices[0].message.content or ""
+            try:
+                return [a for a in _extract_json_array(text) if isinstance(a, dict)]
+            except (ValueError, json.JSONDecodeError) as e:
+                last_err = e
+        raise RuntimeError(f"unparseable model output: {last_err}")

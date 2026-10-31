@@ -6,7 +6,7 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
-llm = ["anthropic>=0.40"]
+llm = ["anthropic>=0.40", "openai>=1.40"]
 dev = ["pytest>=7"]
 
 [project.scripts]

@@ -2,7 +2,7 @@
 
   locqa check  --source intl_ru.arb --target intl_kk.arb --glossary glossary.csv --out report.json
                [--checks all|mt,glossary] [--ref-en intl_en.arb]
-               [--llm anthropic|none|replay] [--llm-mode verify|scan]
+               [--llm anthropic|openai|none|replay] [--llm-mode verify|scan]
                [--html report.html] [--merge]
   locqa eval   --report report.json --labels labels.csv   # precision/recall vs answer key
   locqa review --report report.json --decisions decisions.json --out report.reviewed.json
@@ -20,7 +20,7 @@ from pathlib import Path
 from . import glossary as gl
 from .arb import ArbFile
 from .checks import machine_translation as mt
-from .checks.mt_llm import AnthropicJudge, StaticJudge, Usage
+from .checks.mt_llm import AnthropicJudge, OpenAIJudge, StaticJudge, Usage
 
 
 def _load_pricing(path):
@@ -67,10 +67,15 @@ def cmd_check(a) -> int:
         judge = None
         if a.llm == "anthropic":
             judge = AnthropicJudge(cache_dir=a.cache_dir, batch_size=a.batch_size, usage=usage)
+        elif a.llm == "openai":
+            if not (a.screen_model and a.verify_model):
+                raise SystemExit("--llm openai needs --screen-model and --verify-model (e.g. the same cheap model for both)")
+            judge = OpenAIJudge(cache_dir=a.cache_dir, batch_size=a.batch_size, usage=usage)
         elif a.llm == "replay":
             judge = StaticJudge(json.loads(Path(a.replay).read_text("utf-8")))
-        cfg = mt.MTConfig(llm_mode=a.llm_mode if judge else "none", screen_model=a.screen_model,
-                          verify_model=a.verify_model, report_threshold=a.threshold,
+        cfg = mt.MTConfig(llm_mode=a.llm_mode if judge else "none",
+                          screen_model=a.screen_model or "claude-haiku-5-5",
+                          verify_model=a.verify_model or "claude-sonnet-5-5", report_threshold=a.threshold,
                           min_scan_words=a.min_scan_words)
         f, st = mt.run(src, tgt, judge, cfg, ref, [t.as_dict() for t in terms])
         findings += f; meta["stats"][mt.ISSUE] = st; meta["config"][mt.ISSUE] = cfg.__dict__
@@ -215,11 +220,11 @@ def main(argv=None) -> int:
     c.add_argument("--ref-en", help="optional third-language reference ARB (e.g. intl_en.arb)")
     c.add_argument("--html")
     c.add_argument("--checks", default="all", help="all, or comma list: mt, glossary")
-    c.add_argument("--llm", choices=["none", "anthropic", "replay"], default="none")
+    c.add_argument("--llm", choices=["none", "anthropic", "openai", "replay"], default="none")
     c.add_argument("--replay", help="JSON {key: verdict} for --llm replay")
     c.add_argument("--llm-mode", choices=["verify", "scan"], default="verify")
-    c.add_argument("--screen-model", default="claude-haiku-5-5")
-    c.add_argument("--verify-model", default="claude-sonnet-5-5")
+    c.add_argument("--screen-model")
+    c.add_argument("--verify-model")
     c.add_argument("--pricing", help="JSON {model: {input, output, cache_read, cache_write}} USD per 1M tokens")
     c.add_argument("--cache-dir", default=".locqa_cache")
     c.add_argument("--batch-size", type=int, default=15)

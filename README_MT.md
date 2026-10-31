@@ -7,7 +7,7 @@ calques, Russian grammar, non-Kazakh word order, officialese, English-MT style.
 ## Run
 
 ```bash
-pip install -e ".[llm,dev]"          # anthropic is optional; core has no deps
+pip install -e ".[llm,dev]"          # anthropic/openai are optional; core has no deps
 pytest -q                             # 35 tests, no network
 
 # offline, rules only (high precision, lower recall)
@@ -156,3 +156,19 @@ different values). Dart's JSON decoding keeps the last value, so the last one is
   wrong case government are left to the LLM.
 - The fixtures in `tests/fixtures` are synthetic; no competition data is in this repo
   (per the data agreement — keep it that way).
+
+
+## Using an OpenAI-compatible key
+
+```bash
+pip install openai
+export OPENAI_API_KEY=sk-...
+# export OPENAI_BASE_URL=https://your-gateway/v1   # only for a gateway / proxy
+locqa check --source intl_ru.arb --target intl_kk.arb --glossary glossary.csv \
+  --llm openai --screen-model <cheap-model> --verify-model <cheap-model> \
+  --llm-mode verify --pricing pricing.json --out report.json --html report.html
+```
+
+Same rubric, guards (evidence substring, ICU/placeholder safety), per-item disk cache and
+usage tracking as the Anthropic backend. Models that reject `temperature` are retried
+without it automatically. Start with `verify` mode (only rule-flagged strings), then `scan`.
