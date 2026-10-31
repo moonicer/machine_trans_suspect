@@ -199,3 +199,12 @@ Triage: findings were ranked by severity and confidence and identical source/tar
 113 review items (115 keys). The native reviewer accepted all proposed fixes, editing 2 of them. The other ~430 scan
 findings (mostly medium/low severity) were **not reviewed**; they are not part of the patch and must not be treated as
 verified. Combined with the earlier reviews: 172 reviewed findings, 162 patched keys.
+
+## Full LLM scan (`--llm-mode scan`) and native review
+
+Scan of all 3,568 eligible strings (241 batches, ~593k input / ~457k output tokens): 575 findings. It re-found 20 of
+the 23 machine-translation strings already reviewed by hand. After removing keys already patched and fixes without a
+suggestion, 113 groups of identical strings were ranked by severity and confidence and reviewed by the native speaker:
+107 accepted as proposed, 6 edited with the reviewer's own wording, 2 rejected (current text acceptable). About 430
+lower-ranked findings were not reviewed and are therefore not part of the corrected file.
+Combined result: 170 reviewed findings, 160 patched keys.
