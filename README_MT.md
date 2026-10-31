@@ -172,3 +172,19 @@ locqa check --source intl_ru.arb --target intl_kk.arb --glossary glossary.csv \
 Same rubric, guards (evidence substring, ICU/placeholder safety), per-item disk cache and
 usage tracking as the Anthropic backend. Models that reject `temperature` are retried
 without it automatically. Start with `verify` mode (only rule-flagged strings), then `scan`.
+
+## LLM run (OpenAI-compatible backend, `verify` mode)
+
+One cheap-model pass over the rule candidates (34 strings sent for checking, 17 reported). Usage: 1 call,
+4,738 input / 3,541 output tokens.
+
+- The model gave a verdict on 11 of the 17 findings. For 8 of the 9 strings that the native reviewer had already
+  fixed, its suggestion was identical to the reviewed fix; the rest differed by one word or a larger rewrite
+  (the reviewed fix was kept).
+- 2 new findings came from the model and were reviewed by the native speaker (both edited, only the flagged
+  phrase changed; the model's wider rewrite was not taken).
+- 2 rule-only findings (genitive-at-phrase-end on 2nd-person verb/possessive forms) were judged false alarms
+  and rejected; the weak genitive rule is a known source of such noise.
+- `--max-tokens` raises the output cap per call (reasoning models can spend most of it before answering).
+
+Combined with the earlier reviews: 57 findings, all reviewed, 47 patched keys (`locqa combine`).

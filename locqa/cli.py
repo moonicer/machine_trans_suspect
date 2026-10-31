@@ -66,11 +66,11 @@ def cmd_check(a) -> int:
         usage = Usage(_load_pricing(a.pricing))
         judge = None
         if a.llm == "anthropic":
-            judge = AnthropicJudge(cache_dir=a.cache_dir, batch_size=a.batch_size, usage=usage)
+            judge = AnthropicJudge(cache_dir=a.cache_dir, batch_size=a.batch_size, usage=usage, max_tokens=a.max_tokens)
         elif a.llm == "openai":
             if not (a.screen_model and a.verify_model):
                 raise SystemExit("--llm openai needs --screen-model and --verify-model (e.g. the same cheap model for both)")
-            judge = OpenAIJudge(cache_dir=a.cache_dir, batch_size=a.batch_size, usage=usage)
+            judge = OpenAIJudge(cache_dir=a.cache_dir, batch_size=a.batch_size, usage=usage, max_tokens=a.max_tokens)
         elif a.llm == "replay":
             judge = StaticJudge(json.loads(Path(a.replay).read_text("utf-8")))
         cfg = mt.MTConfig(llm_mode=a.llm_mode if judge else "none",
@@ -228,6 +228,7 @@ def main(argv=None) -> int:
     c.add_argument("--pricing", help="JSON {model: {input, output, cache_read, cache_write}} USD per 1M tokens")
     c.add_argument("--cache-dir", default=".locqa_cache")
     c.add_argument("--batch-size", type=int, default=15)
+    c.add_argument("--max-tokens", type=int, default=4096, help="output cap per LLM call; raise it for reasoning models")
     c.add_argument("--threshold", type=float, default=0.5)
     c.add_argument("--min-scan-words", type=int, default=3)
     c.add_argument("--merge", action="store_true", help="merge into an existing report.json")
